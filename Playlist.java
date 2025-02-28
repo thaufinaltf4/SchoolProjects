@@ -1,106 +1,121 @@
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.StringJoiner;
+import java.io.*;
+
 public class Playlist {
-	private Song[] songs;
-    private int numSongs;
+    private ArrayList<Song> songs;
     private static final int MIN_CAPACITY = 3;
-
-    // Constructor with default capacity
+    
     public Playlist() {
-        this(MIN_CAPACITY);
+        this.songs = new ArrayList<>(MIN_CAPACITY);
     }
-
-    // Constructor with specified capacity
-    public Playlist(int capacity) {
-        if (capacity < MIN_CAPACITY) {
-            capacity = MIN_CAPACITY;
-        }
-        songs = new Song[capacity];
-        numSongs = 0;
+    
+    public Playlist(String filename) throws IOException {
+        this();
+        addSongs(filename);
     }
-
-    //getters
-    public int getCapacity() {
-        return songs.length;
-    }
-
     
     public int getNumSongs() {
-        return numSongs;
+        return songs.size();
     }
-
     
     public Song getSong(int index) {
-        if (index < 0 || index >= numSongs) {
+        if (index < 0 || index >= songs.size()) {
             return null;
         }
-        return songs[index];
+        return songs.get(index);
     }
-
     
     public Song[] getSongs() {
-        return Arrays.copyOf(songs, numSongs);
+        return songs.toArray(new Song[0]);
     }
-
-    // add song
+    
     public boolean addSong(Song song) {
-        if (numSongs >= songs.length || song == null) {
-            return false;
-        }
-        songs[numSongs++] = song;
-        return true;
+        return addSong(songs.size(), song);
     }
-
-    // add a song at specific spot
+    
     public boolean addSong(int index, Song song) {
-        if (numSongs >= songs.length || index < 0 || index > numSongs || song == null) {
+        if (song == null || index < 0 || index > songs.size()) {
             return false;
         }
-        // Shift songs right
-        for (int i = numSongs; i > index; i--) {
-            songs[i] = songs[i - 1];
-        }
-        songs[index] = song;
-        numSongs++;
+        songs.add(index, song);
         return true;
     }
-
-    // add songs from another playlist
+    
     public int addSongs(Playlist playlist) {
         if (playlist == null) {
             return 0;
         }
-        int addedCount = 0;
+        int initialSize = songs.size();
         for (Song song : playlist.getSongs()) {
-            if (addSong(song)) {
-                addedCount++;
+            addSong(song);
+        }
+        return songs.size() - initialSize;
+    }
+    
+    public int addSongs(String filename) throws IOException {
+        BufferedReader reader = new BufferedReader(new FileReader(filename));
+        String line;
+        int count = 0;
+        while ((line = reader.readLine()) != null) {
+            if (addSong(new Song(line))) {
+                count++;
             }
         }
-        return addedCount;
+        reader.close();
+        return count;
     }
-
-    // remove last song
+    
     public Song removeSong() {
-        if (numSongs == 0) {
-            return null;
-        }
-        Song removedSong = songs[--numSongs];
-        songs[numSongs] = null; 
-        return removedSong;
+        return removeSong(songs.size() - 1);
     }
-
-    // remove a song at specific spot
+    
     public Song removeSong(int index) {
-        if (index < 0 || index >= numSongs) {
+        if (index < 0 || index >= songs.size()) {
             return null;
         }
-        Song removedSong = songs[index];
-        
-        // shift songs to the left
-        for (int i = index; i < numSongs - 1; i++) {
-            songs[i] = songs[i + 1];
-        }
-        songs[--numSongs] = null; 
-        return removedSong;
+        return songs.remove(index);
     }
+    
+    public void saveSongs(String filename) throws IOException {
+        BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
+        for (Song song : songs) {
+            writer.write(song.toString());
+            writer.newLine();
+        }
+        writer.close();
+    }
+    
+    public int[] getTotalTime() {
+    	int totalSeconds = 0;
+        for (Song song : songs) {
+            int[] time = song.getTime();
+            totalSeconds += time[0] + (time.length > 1 ? time[1] * 60 : 0) + (time.length > 2 ? time[2] * 3600 : 0);
+        }
 
+        int hours = totalSeconds / 3600;
+        int minutes = (totalSeconds % 3600) / 60;
+        int seconds = totalSeconds % 60;
+
+        // Adjust array length for time output
+        if (hours > 0) {
+            return new int[]{seconds, minutes, hours};// sec, min hr
+        } else if (minutes > 0) {
+            return new int[]{seconds, minutes};// sec, min
+        } else {
+            return new int[]{seconds};// sec
+        }
+    }
+    
+    @Override
+    public String toString() {
+        if (songs.isEmpty()) {
+            return "";
+        }
+        StringJoiner joiner = new StringJoiner(System.lineSeparator());
+        for (Song song : songs) {
+            joiner.add(song.toString());
+        }
+        return joiner.toString();
+    }
 }
